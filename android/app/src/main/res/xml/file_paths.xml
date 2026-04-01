@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider paths configuration.
+  Allows the app to share the downloaded APK file URI securely
+  with the Android package installer on API 24+ (Android 7+).
+-->
+<paths>
+    <!-- External files directory: /sdcard/Android/data/<package>/files/ -->
+    <external-files-path
+        name="external_files"
+        path="." />
+
+    <!-- External cache directory: /sdcard/Android/data/<package>/cache/ -->
+    <external-cache-path
+        name="external_cache"
+        path="." />
+</paths>
