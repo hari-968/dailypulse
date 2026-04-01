@@ -3,11 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/movie.dart';
 import '../../providers/bookmark_provider.dart';
-import '../../providers/news_provider.dart';
 import '../../providers/movie_provider.dart';
-import '../../widgets/news_card.dart';
 import '../../widgets/bookmark_button.dart';
-import '../news/news_detail_screen.dart';
 import '../movies/movie_detail_screen.dart';
 
 class BookmarksScreen extends ConsumerStatefulWidget {
@@ -17,26 +14,10 @@ class BookmarksScreen extends ConsumerStatefulWidget {
   ConsumerState<BookmarksScreen> createState() => _BookmarksScreenState();
 }
 
-class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
   @override
   Widget build(BuildContext context) {
     final bookmarks = ref.watch(bookmarkProvider);
-    final newsAsync = ref.watch(newsProvider);
 
     // Merge ALL movie sources (trending + now playing + Tamil + OTT) and deduplicate
     final trendingAsync = ref.watch(trendingMoviesProvider);
@@ -56,11 +37,6 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
         .where((m) => bookmarks.isMovieBookmarked(m.id))
         .toList();
 
-    final savedArticles = (newsAsync.value ?? [])
-        .where((a) => bookmarks.isNewsBookmarked(a.id))
-        .toList();
-
-    final newsCount = savedArticles.length;
     final moviesCount = uniqueMovies.length;
 
     final isLoadingMovies = trendingAsync.isLoading ||
@@ -94,7 +70,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Your saved articles & movies',
+                        'Your saved movies',
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium
@@ -104,7 +80,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
                   ),
                 ),
                 // Total count badge
-                if (newsCount + moviesCount > 0)
+                if (moviesCount > 0)
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -113,7 +89,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '${newsCount + moviesCount} saved',
+                      '$moviesCount saved',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -125,96 +101,13 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
             ),
           ),
 
-          // ── Tab Bar ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.06),
-                  width: 1,
-                ),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                indicatorPadding: const EdgeInsets.all(3),
-                dividerColor: Colors.transparent,
-                labelColor: Colors.white,
-                unselectedLabelColor: AppTheme.textMuted,
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                tabs: [
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.newspaper_rounded, size: 15),
-                        const SizedBox(width: 6),
-                        const Text('News'),
-                        if (newsCount > 0) ...[
-                          const SizedBox(width: 6),
-                          _CountBadge(count: newsCount),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.movie_rounded, size: 15),
-                        const SizedBox(width: 6),
-                        const Text('Movies'),
-                        if (moviesCount > 0) ...[
-                          const SizedBox(width: 6),
-                          _CountBadge(count: moviesCount),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const SizedBox(height: 8),
 
-          const SizedBox(height: 12),
-
-          // ── Tab Views ──
+          // ── Movies bookmarks view ──
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // News tab
-                _NewsBookmarksList(
-                  articles: savedArticles,
-                  isLoading: newsAsync.isLoading,
-                ),
-                // Movies tab
-                _MoviesBookmarksList(
-                  movies: uniqueMovies,
-                  isLoading: isLoadingMovies,
-                ),
-              ],
+            child: _MoviesBookmarksList(
+              movies: uniqueMovies,
+              isLoading: isLoadingMovies,
             ),
           ),
         ],
@@ -224,76 +117,6 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen>
 }
 
 // ── Counter badge ──────────────────────────────────────────────────────────────
-class _CountBadge extends StatelessWidget {
-  final int count;
-  const _CountBadge({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        '$count',
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
-// ── News bookmarks list ────────────────────────────────────────────────────────
-class _NewsBookmarksList extends ConsumerWidget {
-  final List<dynamic> articles;
-  final bool isLoading;
-
-  const _NewsBookmarksList({
-    required this.articles,
-    required this.isLoading,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryLight),
-      );
-    }
-
-    if (articles.isEmpty) {
-      return _EmptyState(
-        icon: Icons.bookmark_border_rounded,
-        title: 'No saved articles',
-        subtitle:
-            'Tap the bookmark icon on any news article\nto save it here for later.',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-      itemCount: articles.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final article = articles[index];
-        return NewsCard(
-          article: article,
-          index: index,
-          onTap: () => Navigator.push(
-            context,
-            _fadeRoute(NewsDetailScreen(article: article)),
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ── Movies bookmarks list ──────────────────────────────────────────────────────
 class _MoviesBookmarksList extends ConsumerWidget {
   final List<Movie> movies;

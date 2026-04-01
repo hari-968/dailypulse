@@ -59,6 +59,9 @@ class DailyPulseApp extends StatelessWidget {
 // Flip back to false before releasing.
 const bool _kTestUpdatePopup = false;
 
+// Guard against duplicate checks within the same process session.
+bool _kDidCheckUpdateThisLaunch = false;
+
 // ── AppRoot: mounts the home screen and triggers update check after first frame ──
 class _AppRoot extends StatefulWidget {
   const _AppRoot();
@@ -71,14 +74,17 @@ class _AppRootState extends State<_AppRoot> {
   @override
   void initState() {
     super.initState();
+    if (_kDidCheckUpdateThisLaunch) return;
+    _kDidCheckUpdateThisLaunch = true;
+
     // Wait until the first frame is drawn so we have a valid BuildContext
     // with a mounted Navigator before showing the bottom sheet.
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
   }
 
   Future<void> _checkForUpdate() async {
-    // Small delay so the home screen renders first — better UX
-    await Future.delayed(const Duration(seconds: 2));
+    // Keep delay short so update check is tied to startup, not resume behavior.
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
     // ── TEST MODE: show bottom sheet immediately with fake data ────────────
