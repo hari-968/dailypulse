@@ -57,7 +57,7 @@ class DailyPulseApp extends StatelessWidget {
 // ── TEST FLAG ─────────────────────────────────────────────────────────────────
 // Set to true to preview the update bottom sheet with fake data (no network needed).
 // Flip back to false before releasing.
-const bool _kTestUpdatePopup = true;
+const bool _kTestUpdatePopup = false;
 
 // ── AppRoot: mounts the home screen and triggers update check after first frame ──
 class _AppRoot extends StatefulWidget {
