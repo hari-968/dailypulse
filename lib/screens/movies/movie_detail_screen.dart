@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,6 +67,31 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen>
             backgroundColor: AppTheme.surface,
             leading: _BackButton(),
             actions: [
+              // ── Share Button ──
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: const Icon(Icons.share_rounded, size: 22, color: Colors.white),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(
+                      text: "Check out ${movie.title} (${movie.year}) on DailyPulse!",
+                    ));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Title copied to clipboard!'),
+                          backgroundColor: AppTheme.primary,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              // ── Bookmark Button ──
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: BookmarkButton.movie(movieId: movie.id, size: 22),
@@ -166,6 +192,36 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen>
                           ),
                         ],
                       ),
+                      
+                      // ── OTT Platform Badge (if any) ──
+                      if (movie.ottPlatform != null && movie.ottPlatform!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.live_tv_rounded, 
+                                  color: AppTheme.primaryLight, size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Streaming on ${movie.ottPlatform}',
+                                style: TextStyle(
+                                  color: AppTheme.primaryLight,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      
                       const SizedBox(height: 24),
 
                       // Divider
