@@ -18,6 +18,7 @@ class MoviesScreen extends ConsumerStatefulWidget {
 class _MoviesScreenState extends ConsumerState<MoviesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  double _testSliderValue = 50;
 
   @override
   void initState() {
@@ -70,6 +71,56 @@ class _MoviesScreenState extends ConsumerState<MoviesScreen>
                       .textTheme
                       .bodyMedium
                       ?.copyWith(color: AppTheme.textMuted),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.06),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.tune_rounded,
+                        size: 18,
+                        color: AppTheme.primaryLight,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                            activeTrackColor: AppTheme.primaryLight,
+                            inactiveTrackColor: AppTheme.divider,
+                            thumbColor: AppTheme.primaryLight,
+                          ),
+                          child: Slider(
+                            min: 0,
+                            max: 100,
+                            divisions: 20,
+                            value: _testSliderValue,
+                            onChanged: (value) {
+                              setState(() => _testSliderValue = value);
+                            },
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _testSliderValue.round().toString(),
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
