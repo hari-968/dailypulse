@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,17 +76,27 @@ class _AppRootState extends State<_AppRoot> {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
+    debugPrint('[main.dart] _checkForUpdate() — calling UpdateService...');
+
     final (result, info) = await UpdateService.instance.checkForUpdate();
 
     if (!mounted) return;
 
-    if (result == UpdateCheckResult.updateAvailable && info != null) {
-      // Show the update bottom sheet
-      await showUpdateBottomSheet(context, info);
-    }
+    switch (result) {
+      case UpdateCheckResult.updateAvailable:
+        debugPrint('[main.dart] ✅ Update available (${info?.version}). Showing bottom sheet.');
+        await showUpdateBottomSheet(context, info!);
 
-    // result == upToDate → do nothing
-    // result == error    → silently ignore (don't disrupt the user)
+      case UpdateCheckResult.upToDate:
+        debugPrint('[main.dart] ✔ App is already up to date. No popup shown.');
+
+      case UpdateCheckResult.error:
+        // Silently ignore in production — log in debug so we know what happened
+        debugPrint(
+          '[main.dart] ⚠️ Update check failed (network error or version.json not found). '
+          'No popup shown. Check that the version.json URL is reachable and the file exists.',
+        );
+    }
   }
 
   @override
