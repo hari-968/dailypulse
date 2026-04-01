@@ -87,36 +87,54 @@ class UpdateService {
     receiveTimeout: const Duration(seconds: 10),
   ));
 
+  // ── Get the currently installed app version ──────────────────────────────
+  /// Returns the version string from pubspec (e.g. "1.0.0").
+  /// Source file: lib/services/update_service.dart
+  Future<String> getInstalledVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    debugPrint(
+      '[update_service.dart] Installed version: ${packageInfo.version}+${packageInfo.buildNumber}',
+    );
+    return packageInfo.version;
+  }
+
   // ── Check if an update is available ───────────────────────────────────────
   /// Returns a tuple of [UpdateCheckResult, AppUpdateInfo?].
   /// AppUpdateInfo is non-null only when result == updateAvailable.
+  /// Source file: lib/services/update_service.dart
   Future<(UpdateCheckResult, AppUpdateInfo?)> checkForUpdate() async {
     try {
+      debugPrint('[update_service.dart] checkForUpdate() called — fetching $_versionJsonUrl');
+
       // 1. Fetch the remote version JSON
       final response = await _dio.get<Map<String, dynamic>>(_versionJsonUrl);
       if (response.statusCode != 200 || response.data == null) {
+        debugPrint('[update_service.dart] Bad response: HTTP ${response.statusCode}');
         return (UpdateCheckResult.error, null);
       }
 
       final info = AppUpdateInfo.fromJson(response.data!);
 
       // 2. Get the currently installed version
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version; // e.g. "1.0.0"
+      final currentVersion = await getInstalledVersion();
 
-      debugPrint('[UpdateService] Current: $currentVersion | Remote: ${info.version}');
+      debugPrint(
+        '[update_service.dart] Installed: $currentVersion  |  Remote: ${info.version}  |  ForceUpdate: ${info.forceUpdate}',
+      );
 
       // 3. Compare semantic versions
       if (_isNewer(info.version, currentVersion)) {
+        debugPrint('[update_service.dart] ✅ Update available → ${info.version}');
         return (UpdateCheckResult.updateAvailable, info);
       }
 
+      debugPrint('[update_service.dart] ✔ App is up to date ($currentVersion)');
       return (UpdateCheckResult.upToDate, null);
     } on DioException catch (e) {
-      debugPrint('[UpdateService] Network error: ${e.message}');
+      debugPrint('[update_service.dart] ❌ Network error: ${e.message}');
       return (UpdateCheckResult.error, null);
     } catch (e) {
-      debugPrint('[UpdateService] Unexpected error: $e');
+      debugPrint('[update_service.dart] ❌ Unexpected error: $e');
       return (UpdateCheckResult.error, null);
     }
   }
