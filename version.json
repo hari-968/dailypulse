@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "apk_url": "https://github.com/YOUR_USERNAME/YOUR_REPO/releases/download/v1.0.0/dailypulse.apk",
+  "version": "1.1.0",
+  "apk_url": "https://raw.githubusercontent.com/hari-968/dailypulse/main/build/app/outputs/flutter-apk/app-release.apk",
   "force_update": false,
   "message": "Bug fixes and performance improvements. Update now to get the latest features."
 }

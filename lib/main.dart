@@ -54,6 +54,11 @@ class DailyPulseApp extends StatelessWidget {
   }
 }
 
+// ── TEST FLAG ─────────────────────────────────────────────────────────────────
+// Set to true to preview the update bottom sheet with fake data (no network needed).
+// Flip back to false before releasing.
+const bool _kTestUpdatePopup = true;
+
 // ── AppRoot: mounts the home screen and triggers update check after first frame ──
 class _AppRoot extends StatefulWidget {
   const _AppRoot();
@@ -76,6 +81,21 @@ class _AppRootState extends State<_AppRoot> {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
+    // ── TEST MODE: show bottom sheet immediately with fake data ────────────
+    if (_kTestUpdatePopup) {
+      debugPrint('[main.dart] 🧪 TEST MODE — showing update sheet with mock data.');
+      await showUpdateBottomSheet(
+        context,
+        AppUpdateInfo(
+          version: '1.1.0',
+          apkUrl: 'https://example.com/fake.apk', // won't actually download
+          forceUpdate: false,
+          message: '🧪 This is a test popup.\n\nOnce version.json is on GitHub, real updates will appear here. Set _kTestUpdatePopup = false to go live.',
+        ),
+      );
+      return;
+    }
+    // ── LIVE MODE ─────────────────────────────────────────────────────────────
     debugPrint('[main.dart] _checkForUpdate() — calling UpdateService...');
 
     final (result, info) = await UpdateService.instance.checkForUpdate();
@@ -91,7 +111,6 @@ class _AppRootState extends State<_AppRoot> {
         debugPrint('[main.dart] ✔ App is already up to date. No popup shown.');
 
       case UpdateCheckResult.error:
-        // Silently ignore in production — log in debug so we know what happened
         debugPrint(
           '[main.dart] ⚠️ Update check failed (network error or version.json not found). '
           'No popup shown. Check that the version.json URL is reachable and the file exists.',
