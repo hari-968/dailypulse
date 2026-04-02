@@ -66,6 +66,9 @@ class UpdateService {
   UpdateService._();
   static final UpdateService instance = UpdateService._();
 
+  /// Human-readable reason for the latest failure in update flow.
+  String? lastError;
+
   // ── CONFIGURE THIS ────────────────────────────────────────────────────────
   //
   // Host a file like this on GitHub (raw URL) or any public server:
@@ -104,6 +107,7 @@ class UpdateService {
   /// Source file: lib/services/update_service.dart
   Future<(UpdateCheckResult, AppUpdateInfo?)> checkForUpdate() async {
     try {
+      lastError = null;
       debugPrint('[update_service.dart] checkForUpdate() called — fetching $_versionJsonUrl');
 
       // 1. Fetch the remote version JSON
@@ -114,6 +118,13 @@ class UpdateService {
       }
 
       final info = AppUpdateInfo.fromJson(response.data!);
+
+      if (info.apkUrl.trim().isEmpty || !_looksLikeDownloadableApkUrl(info.apkUrl)) {
+        lastError =
+            'Invalid apk_url in version.json. Use a direct .apk file link (prefer GitHub Releases download URL).';
+        debugPrint('[update_service.dart] ❌ $lastError');
+        return (UpdateCheckResult.error, null);
+      }
 
       // 2. Get the currently installed version
       final currentVersion = await getInstalledVersion();
@@ -131,9 +142,11 @@ class UpdateService {
       debugPrint('[update_service.dart] ✔ App is up to date ($currentVersion)');
       return (UpdateCheckResult.upToDate, null);
     } on DioException catch (e) {
+      lastError = 'Could not check updates: ${e.message ?? 'network error'}';
       debugPrint('[update_service.dart] ❌ Network error: ${e.message}');
       return (UpdateCheckResult.error, null);
     } catch (e) {
+      lastError = 'Unexpected update check error: $e';
       debugPrint('[update_service.dart] ❌ Unexpected error: $e');
       return (UpdateCheckResult.error, null);
     }
@@ -148,18 +161,25 @@ class UpdateService {
     CancelToken? cancelToken,
   }) async {
     try {
-      // Request storage permission on Android < 10
-      if (Platform.isAndroid) {
-        final status = await Permission.storage.request();
-        if (status.isDenied) {
-          debugPrint('[UpdateService] Storage permission denied.');
-          return null;
-        }
+      lastError = null;
+
+      if (apkUrl.trim().isEmpty) {
+        lastError = 'APK URL is empty.';
+        debugPrint('[UpdateService] $lastError');
+        return null;
       }
 
-      // Save to external app files directory — no extra permission on Android 10+
+      final apkUri = Uri.tryParse(apkUrl.trim());
+      if (apkUri == null || !(apkUri.isScheme('https') || apkUri.isScheme('http'))) {
+        lastError = 'APK URL is invalid.';
+        debugPrint('[UpdateService] $lastError -> $apkUrl');
+        return null;
+      }
+
+      // Save to app-specific external storage; no broad storage permission needed.
       final dir = await getExternalStorageDirectory();
       if (dir == null) {
+        lastError = 'Could not access device storage path.';
         debugPrint('[UpdateService] Could not get external storage directory.');
         return null;
       }
@@ -171,7 +191,7 @@ class UpdateService {
       if (await file.exists()) await file.delete();
 
       await _dio.download(
-        apkUrl,
+        apkUri.toString(),
         savePath,
         cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
@@ -182,16 +202,32 @@ class UpdateService {
         },
       );
 
+      if (!await file.exists() || await file.length() == 0) {
+        lastError = 'Downloaded file is empty.';
+        debugPrint('[UpdateService] $lastError');
+        return null;
+      }
+
+      if (!await _hasZipSignature(file)) {
+        lastError =
+            'Download is not a valid APK file. Check apk_url (must be direct APK download URL).';
+        debugPrint('[UpdateService] $lastError');
+        return null;
+      }
+
       debugPrint('[UpdateService] APK saved at: $savePath');
       return file;
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
+        lastError = 'Download cancelled.';
         debugPrint('[UpdateService] Download cancelled.');
       } else {
+        lastError = 'Download failed: ${e.message ?? 'network error'}';
         debugPrint('[UpdateService] Download error: ${e.message}');
       }
       return null;
     } catch (e) {
+      lastError = 'Unexpected download error: $e';
       debugPrint('[UpdateService] Unexpected download error: $e');
       return null;
     }
@@ -201,12 +237,21 @@ class UpdateService {
   /// Prompts the system installer to install the APK at [apkFile].
   Future<bool> installApk(File apkFile) async {
     try {
+      lastError = null;
+
+      if (!await apkFile.exists() || await apkFile.length() == 0) {
+        lastError = 'APK file not found on device.';
+        return false;
+      }
+
       // REQUEST_INSTALL_PACKAGES permission check (Android 8+)
       if (Platform.isAndroid) {
         final canInstall = await Permission.requestInstallPackages.isGranted;
         if (!canInstall) {
           final status = await Permission.requestInstallPackages.request();
           if (!status.isGranted) {
+            lastError =
+                'Install permission denied. Enable "Install unknown apps" for this app.';
             debugPrint('[UpdateService] Install packages permission denied.');
             return false;
           }
@@ -219,9 +264,35 @@ class UpdateService {
       );
 
       debugPrint('[UpdateService] OpenFilex result: ${result.message}');
-      return result.type == ResultType.done;
+      if (result.type != ResultType.done) {
+        lastError =
+            'Installer could not be opened (${result.message}). Please allow unknown app installs.';
+        return false;
+      }
+
+      return true;
     } catch (e) {
+      lastError = 'Install error: $e';
       debugPrint('[UpdateService] Install error: $e');
+      return false;
+    }
+  }
+
+  bool _looksLikeDownloadableApkUrl(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('/tree/') || lower.endsWith('/releases') || lower.contains('/blob/')) {
+      return false;
+    }
+    return lower.contains('.apk') || lower.contains('/releases/download/');
+  }
+
+  Future<bool> _hasZipSignature(File file) async {
+    try {
+      final raf = await file.open();
+      final bytes = await raf.read(2);
+      await raf.close();
+      return bytes.length == 2 && bytes[0] == 0x50 && bytes[1] == 0x4B;
+    } catch (_) {
       return false;
     }
   }

@@ -105,7 +105,8 @@ class _UpdateBottomSheetState extends State<_UpdateBottomSheet>
     if (file == null) {
       setState(() {
         _state = _DownloadState.failed;
-        _errorMessage = 'Download failed. Check your connection and try again.';
+        _errorMessage = UpdateService.instance.lastError ??
+            'Download failed. Check your connection and try again.';
       });
       return;
     }
@@ -125,7 +126,7 @@ class _UpdateBottomSheetState extends State<_UpdateBottomSheet>
     if (!installed && mounted) {
       setState(() {
         _state = _DownloadState.failed;
-        _errorMessage =
+        _errorMessage = UpdateService.instance.lastError ??
             'Could not launch installer. Try enabling "Install unknown apps" in Settings.';
       });
     }
