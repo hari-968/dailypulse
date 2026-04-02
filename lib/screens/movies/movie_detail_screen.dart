@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/movie.dart';
 import '../../providers/movie_provider.dart';
+import '../../services/video_service.dart';
 import '../../widgets/bookmark_button.dart';
 
 class MovieDetailScreen extends ConsumerStatefulWidget {
@@ -43,10 +43,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen>
   }
 
   Future<void> _openTrailer(String key) async {
-    final url = Uri.parse('https://www.youtube.com/watch?v=$key');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    await VideoService.openMovieTrailer(widget.movie, trailerKey: key);
   }
 
   @override

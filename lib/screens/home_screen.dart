@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import 'movies/movies_screen.dart';
+import 'watch/watch_screen.dart';
 import 'bookmarks/bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = const [
     MoviesScreen(),
+    WatchScreen(),
     BookmarksScreen(),
   ];
 
@@ -60,6 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.movie_outlined),
               selectedIcon: Icon(Icons.movie_rounded),
               label: 'Movies',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.smart_display_outlined),
+              selectedIcon: Icon(Icons.smart_display_rounded),
+              label: 'Watch',
             ),
             NavigationDestination(
               icon: Icon(Icons.bookmark_border_rounded),
